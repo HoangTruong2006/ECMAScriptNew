@@ -45,4 +45,5 @@ Trân trọng,
 
 console.log(emailTemplate);
 
-// bài 4
+
+
