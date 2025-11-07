@@ -30,3 +30,6 @@ console.log(person); // { name: 'Alice', age: 30 }
 const numbers = [1, 2, 3, 4, 5];
 const doubled = numbers.map((num) => num * 2);
 const evens = numbers.filter((num) => num % 2 === 0);
+
+
+
