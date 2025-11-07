@@ -11,7 +11,7 @@ for (let i = 0; i < 3; i++) {
 // Tạo một object student với const
 // Thêm thuộc tính điểm và in ra
 const student = {
-  name: "ThuyTien",
+  name: "ThuyTien9",
   age: 20,
 };
 student.grade ="A";
