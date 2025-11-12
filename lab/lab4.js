@@ -22,3 +22,12 @@ function swapElements(arr) {
 }
 
 console.log(swapElements([1, 2, 3, 4, 5]));
+
+//Bài 3: Viết hàm delay trả về Promise
+function delay(ms) {
+  return new Promise(resolve => {
+    setTimeout(resolve, ms);
+  });
+}
+
+delay(2000).then(() => console.log("2 seconds passed"));
