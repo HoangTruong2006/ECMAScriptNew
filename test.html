@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Quản lý vận hành tour</title>
+  <style>
+    :root{--bg:#f6f7fb;--card:#ffffff;--muted:#6b7280;--accent:#0b5fff}
+    body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;margin:0;background:var(--bg);color:#111}
+    .container{max-width:1100px;margin:28px auto;padding:20px}
+    header{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+    h1{margin:0;font-size:20px}
+    .card{background:var(--card);border-radius:12px;padding:16px;box-shadow:0 6px 18px rgba(16,24,40,0.06)}
+    form.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    label{font-size:13px;color:var(--muted);display:block;margin-bottom:6px}
+    input[type=text],input[type=number],select,textarea{width:100%;padding:8px;border:1px solid #e6e9f2;border-radius:8px;font-size:14px}
+    textarea{min-height:64px}
+    .actions{display:flex;gap:8px;align-items:center}
+    button{cursor:pointer;padding:8px 12px;border-radius:8px;border:0;background:var(--accent);color:#fff}
+    button.ghost{background:#eef2ff;color:var(--accent);border:1px solid #e0e7ff}
+    .tools{display:flex;gap:8px}
+    .search{flex:1}
+    table{width:100%;border-collapse:collapse;margin-top:12px}
+    th,td{padding:10px;border-bottom:1px solid #f1f3f9;text-align:left;font-size:14px}
+    th{font-weight:600;color:var(--muted);font-size:13px}
+    .small{font-size:13px;color:var(--muted)}
+    .pill{display:inline-block;padding:6px 10px;border-radius:999px;background:#f3f4f6;font-size:13px}
+    .right{display:flex;gap:8px;justify-content:flex-end}
+    @media(max-width:760px){form.grid{grid-template-columns:1fr}header{flex-direction:column;align-items:flex-start;gap:12px}}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <h1>Quản lý vận hành tour</h1>
+        <div class="small">Thêm, sửa, xóa và theo dõi trạng thái tour — lưu trên localStorage</div>
+      </div>
+      <div class="tools">
+        <input id="search" class="search" type="text" placeholder="Tìm theo tên hoặc Mã tour..." />
+        <button id="exportBtn" class="ghost">Export CSV</button>
+        <button id="clearBtn" class="ghost">Xóa dữ liệu</button>
+      </div>
+    </header>
+
+    <section class="card">
+      <form id="tourForm" class="grid">
+        <div>
+          <label>Mã tour</label>
+          <input id="code" type="text" required placeholder="VD: TOUR001" />
+        </div>
+        <div>
+          <label>Tên tour</label>
+          <input id="name" type="text" required placeholder="Tên tour" />
+        </div>
+        <div>
+          <label>Ngày khởi hành</label>
+          <input id="startDate" type="text" placeholder="YYYY-MM-DD" />
+        </div>
+        <div>
+          <label>Số chỗ</label>
+          <input id="capacity" type="number" min="1" value="10" />
+        </div>
+        <div>
+          <label>Giá (VND)</label>
+          <input id="price" type="number" min="0" value="0" />
+        </div>
+        <div>
+          <label>Trạng thái</label>
+          <select id="status">
+            <option value="draft">Nháp</option>
+            <option value="open">Mở bán</option>
+            <option value="running">Đang chạy</option>
+            <option value="finished">Kết thúc</option>
+          </select>
+        </div>
+        <div style="grid-column:1/-1">
+          <label>Mô tả</label>
+          <textarea id="desc" placeholder="Mô tả ngắn..."></textarea>
+        </div>
+        <div style="grid-column:1/-1;display:flex;gap:8px;justify-content:flex-end">
+          <button type="submit">Lưu</button>
+          <button type="button" id="resetBtn" class="ghost">Mới</button>
+        </div>
+      </form>
+    </section>
+
+    <section style="margin-top:14px" class="card">
+      <div class="right">
+        <div class="pill">Tổng tour: <span id="total">0</span></div>
+      </div>
+      <table id="tourTable">
+        <thead>
+          <tr>
+            <th>Mã</th>
+            <th>Tên</th>
+            <th>Khởi hành</th>
+            <th>Giá</th>
+            <th>Chỗ</th>
+            <th>Trạng thái</th>
+            <th>Hành động</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+  </div>
+
+  <script>
+    // Simple tour manager using localStorage
+    const LS_KEY = 'tours_v1'
+    let tours = JSON.parse(localStorage.getItem(LS_KEY) || '[]')
+
+    const $ = id=>document.getElementById(id)
+    const tbody = document.querySelector('#tourTable tbody')
+    const form = $('tourForm')
+    const search = $('search')
+    const total = $('total')
+    const exportBtn = $('exportBtn')
+    const clearBtn = $('clearBtn')
+    const resetBtn = $('resetBtn')
+
+    function saveLS(){ localStorage.setItem(LS_KEY, JSON.stringify(tours)) }
+
+    function formatMoney(v){ return new Intl.NumberFormat('vi-VN').format(Number(v)||0) }
+
+    function render(filter=''){
+      tbody.innerHTML = ''
+      const q = filter.trim().toLowerCase()
+      const list = tours.filter(t=>!(q) || t.name.toLowerCase().includes(q) || t.code.toLowerCase().includes(q))
+      list.forEach((t, idx)=>{
+        const tr = document.createElement('tr')
+        tr.innerHTML = `
+          <td>${t.code}</td>
+          <td><strong>${t.name}</strong><div class="small">${t.desc||''}</div></td>
+          <td>${t.startDate||'-'}</td>
+          <td>${formatMoney(t.price)} ₫</td>
+          <td>${t.capacity}</td>
+          <td>${t.status}</td>
+          <td>
+            <button onclick="edit(${idx})" class="ghost">Sửa</button>
+            <button onclick="remove(${idx})">Xóa</button>
+          </td>
+        `
+        tbody.appendChild(tr)
+      })
+      total.textContent = list.length
+    }
+
+    function resetForm(){ form.reset(); $('code').focus(); editingIndex = -1 }
+
+    // Add / Edit logic
+    let editingIndex = -1
+    form.addEventListener('submit', e=>{
+      e.preventDefault()
+      const tour = {
+        code: $('code').value.trim(),
+        name: $('name').value.trim(),
+        startDate: $('startDate').value.trim(),
+        capacity: Number($('capacity').value)||0,
+        price: Number($('price').value)||0,
+        status: $('status').value,
+        desc: $('desc').value.trim()
+      }
+      if(!tour.code || !tour.name){ alert('Mã và tên tour là bắt buộc'); return }
+
+      // if editing, ensure unique code (or allow same if unchanged)
+      const conflict = tours.find((t,i)=>t.code===tour.code && i!==editingIndex)
+      if(conflict){ if(!confirm('Mã tour đã tồn tại. Ghi đè?')) return }
+
+      if(editingIndex>=0){ tours[editingIndex] = tour }
+      else tours.push(tour)
+      saveLS()
+      render(search.value)
+      resetForm()
+    })
+
+    // Expose functions to window for table buttons
+    window.edit = function(i){
+      const t = tours[i]
+      if(!t) return
+      editingIndex = i
+      $('code').value = t.code
+      $('name').value = t.name
+      $('startDate').value = t.startDate
+      $('capacity').value = t.capacity
+      $('price').value = t.price
+      $('status').value = t.status
+      $('desc').value = t.desc
+      window.scrollTo({top:0,behavior:'smooth'})
+    }
+
+    window.remove = function(i){
+      if(!confirm('Xác nhận xóa tour này?')) return
+      tours.splice(i,1)
+      saveLS(); render(search.value)
+    }
+
+    search.addEventListener('input', ()=>render(search.value))
+
+    exportBtn.addEventListener('click', ()=>{
+      if(!tours.length){ alert('Không có dữ liệu để export'); return }
+      const header = ['code','name','startDate','capacity','price','status','desc']
+      const rows = [header.join(',')].concat(tours.map(t=>header.map(h=>`"${String(t[h]||'').replace(/"/g,'""')}"`).join(',')))
+      const blob = new Blob([rows.join('\n')], {type:'text/csv'})
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url; a.download = 'tours.csv'; a.click(); URL.revokeObjectURL(url)
+    })
+
+    clearBtn.addEventListener('click', ()=>{
+      if(!confirm('Xóa toàn bộ dữ liệu tour trong trình duyệt?')) return
+      tours = []; saveLS(); render()
+    })
+
+    resetBtn.addEventListener('click', resetForm)
+
+    // initial render
+    render()
+  </script>
+</body>
+</html>
