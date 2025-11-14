@@ -1,220 +1,714 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="vi">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Quản lý vận hành tour</title>
-  <style>
-    :root{--bg:#f6f7fb;--card:#ffffff;--muted:#6b7280;--accent:#0b5fff}
-    body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;margin:0;background:var(--bg);color:#111}
-    .container{max-width:1100px;margin:28px auto;padding:20px}
-    header{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
-    h1{margin:0;font-size:20px}
-    .card{background:var(--card);border-radius:12px;padding:16px;box-shadow:0 6px 18px rgba(16,24,40,0.06)}
-    form.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-    label{font-size:13px;color:var(--muted);display:block;margin-bottom:6px}
-    input[type=text],input[type=number],select,textarea{width:100%;padding:8px;border:1px solid #e6e9f2;border-radius:8px;font-size:14px}
-    textarea{min-height:64px}
-    .actions{display:flex;gap:8px;align-items:center}
-    button{cursor:pointer;padding:8px 12px;border-radius:8px;border:0;background:var(--accent);color:#fff}
-    button.ghost{background:#eef2ff;color:var(--accent);border:1px solid #e0e7ff}
-    .tools{display:flex;gap:8px}
-    .search{flex:1}
-    table{width:100%;border-collapse:collapse;margin-top:12px}
-    th,td{padding:10px;border-bottom:1px solid #f1f3f9;text-align:left;font-size:14px}
-    th{font-weight:600;color:var(--muted);font-size:13px}
-    .small{font-size:13px;color:var(--muted)}
-    .pill{display:inline-block;padding:6px 10px;border-radius:999px;background:#f3f4f6;font-size:13px}
-    .right{display:flex;gap:8px;justify-content:flex-end}
-    @media(max-width:760px){form.grid{grid-template-columns:1fr}header{flex-direction:column;align-items:flex-start;gap:12px}}
-  </style>
-</head>
-<body>
-  <div class="container">
-    <header>
-      <div>
-        <h1>Quản lý vận hành tour</h1>
-      </div>
-      <div class="tools">
-        <input id="search" class="search" type="text" placeholder="Tìm theo tên hoặc Mã tour..." />
-        <button id="exportBtn" class="ghost">Export CSV</button>
-        <button id="clearBtn" class="ghost">Xóa dữ liệu</button>
-      </div>
-    </header>
-
-    <section class="card">
-      <form id="tourForm" class="grid">
-        <div>
-          <label>Mã tour</label>
-          <input id="code" type="text" required placeholder="VD: TOUR001" />
-        </div>
-        <div>
-          <label>Tên tour</label>
-          <input id="name" type="text" required placeholder="Tên tour" />
-        </div>
-        <div>
-          <label>Ngày khởi hành</label>
-          <input id="startDate" type="text" placeholder="YYYY-MM-DD" />
-        </div>
-        <div>
-          <label>Số chỗ</label>
-          <input id="capacity" type="number" min="1" value="10" />
-        </div>
-        <div>
-          <label>Giá (VND)</label>
-          <input id="price" type="number" min="0" value="0" />
-        </div>
-        <div>
-          <label>Trạng thái</label>
-          <select id="status">
-            <option value="open">Mở bán</option>
-            <option value="running">Đang chạy</option>
-            <option value="finished">Kết thúc</option>
-          </select>
-        </div>
-        <div style="grid-column:1/-1">
-          <label>Mô tả</label>
-          <textarea id="desc" placeholder="Mô tả ngắn..."></textarea>
-        </div>
-        <div style="grid-column:1/-1;display:flex;gap:8px;justify-content:flex-end">
-          <button type="submit">Lưu</button>
-          <button type="button" id="resetBtn" class="ghost">Mới</button>
-        </div>
-      </form>
-    </section>
-
-    <section style="margin-top:14px" class="card">
-      <div class="right">
-        <div class="pill">Tổng tour: <span id="total">0</span></div>
-      </div>
-      <table id="tourTable">
-        <thead>
-          <tr>
-            <th>Mã</th>
-            <th>Tên</th>
-            <th>Khởi hành</th>
-            <th>Giá</th>
-            <th>Chỗ</th>
-            <th>Trạng thái</th>
-            <th>Hành động</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </section>
-  </div>
-
-  <script>
-    // Simple tour manager using localStorage
-    const LS_KEY = 'tours_v1'
-    let tours = JSON.parse(localStorage.getItem(LS_KEY) || '[]')
-
-    const $ = id=>document.getElementById(id)
-    const tbody = document.querySelector('#tourTable tbody')
-    const form = $('tourForm')
-    const search = $('search')
-    const total = $('total')
-    const exportBtn = $('exportBtn')
-    const clearBtn = $('clearBtn')
-    const resetBtn = $('resetBtn')
-
-    function saveLS(){ localStorage.setItem(LS_KEY, JSON.stringify(tours)) }
-
-    function formatMoney(v){ return new Intl.NumberFormat('vi-VN').format(Number(v)||0) }
-
-    function render(filter=''){
-      tbody.innerHTML = ''
-      const q = filter.trim().toLowerCase()
-      const list = tours.filter(t=>!(q) || t.name.toLowerCase().includes(q) || t.code.toLowerCase().includes(q))
-      list.forEach((t, idx)=>{
-        const tr = document.createElement('tr')
-        tr.innerHTML = `
-          <td>${t.code}</td>
-          <td><strong>${t.name}</strong><div class="small">${t.desc||''}</div></td>
-          <td>${t.startDate||'-'}</td>
-          <td>${formatMoney(t.price)} ₫</td>
-          <td>${t.capacity}</td>
-          <td>${t.status}</td>
-          <td>
-            <button onclick="edit(${idx})" class="ghost">Sửa</button>
-            <button onclick="remove(${idx})">Xóa</button>
-          </td>
-        `
-        tbody.appendChild(tr)
-      })
-      total.textContent = list.length
-    }
-
-    function resetForm(){ form.reset(); $('code').focus(); editingIndex = -1 }
-
-    // Add / Edit logic
-    let editingIndex = -1
-    form.addEventListener('submit', e=>{
-      e.preventDefault()
-      const tour = {
-        code: $('code').value.trim(),
-        name: $('name').value.trim(),
-        startDate: $('startDate').value.trim(),
-        capacity: Number($('capacity').value)||0,
-        price: Number($('price').value)||0,
-        status: $('status').value,
-        desc: $('desc').value.trim()
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Dashboard Hướng dẫn viên (HDV)</title>
+    <style>
+      :root {
+        --bg: #f4f6f8;
+        --card: #fff;
+        --accent: #0ea5a4;
+        --muted: #6b7280;
       }
-      if(!tour.code || !tour.name){ alert('Mã và tên tour là bắt buộc'); return }
+      * {
+        box-sizing: border-box;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+          Roboto, "Helvetica Neue", Arial;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: #0f172a;
+      }
+      .layout {
+        display: grid;
+        grid-template-columns: 260px 1fr;
+        min-height: 100vh;
+      }
+      .sidebar {
+        background: #07283a;
+        color: #fff;
+        padding: 20px;
+      }
+      .brand {
+        font-weight: 700;
+        font-size: 18px;
+        margin-bottom: 18px;
+      }
+      .nav {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .nav button {
+        background: transparent;
+        border: none;
+        color: inherit;
+        padding: 10px;
+        border-radius: 8px;
+        text-align: left;
+        cursor: pointer;
+      }
+      .nav button.active {
+        background: rgba(255, 255, 255, 0.06);
+      }
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px 24px;
+        background: transparent;
+      }
+      main {
+        padding: 20px;
+      }
+      .container {
+        max-width: 1100px;
+        margin: 0 auto;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+      }
+      .card {
+        background: var(--card);
+        padding: 14px;
+        border-radius: 12px;
+        box-shadow: 0 1px 2px rgba(2, 6, 23, 0.06);
+      }
+      .card h3 {
+        margin: 0 0 8px 0;
+        font-size: 16px;
+      }
+      .small {
+        font-size: 13px;
+        color: var(--muted);
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th,
+      td {
+        padding: 8px;
+        text-align: left;
+        border-bottom: 1px solid #eee;
+        font-size: 14px;
+      }
+      .btn {
+        display: inline-block;
+        padding: 8px 12px;
+        border-radius: 8px;
+        border: none;
+        background: var(--accent);
+        color: white;
+        cursor: pointer;
+      }
+      .btn.ghost {
+        background: transparent;
+        color: var(--accent);
+        border: 1px solid rgba(14, 165, 164, 0.12);
+      }
+      .search {
+        display: flex;
+        gap: 8px;
+      }
+      .search input {
+        padding: 8px;
+        border-radius: 8px;
+        border: 1px solid #ddd;
+        flex: 1;
+      }
+      .attendance .guest {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px;
+        border-radius: 8px;
+        border: 1px solid #eee;
+        margin-bottom: 8px;
+      }
+      .tag {
+        font-size: 12px;
+        padding: 4px 8px;
+        border-radius: 999px;
+        background: #eefdfa;
+        color: #03544e;
+      }
+      .note {
+        white-space: pre-wrap;
+      }
+      footer {
+        padding: 20px;
+        text-align: center;
+        color: var(--muted);
+      }
+      @media (max-width: 900px) {
+        .layout {
+          grid-template-columns: 1fr;
+        }
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="layout">
+      <aside class="sidebar">
+        <div class="brand">HDV Dashboard</div>
+        <div class="small">Hoạt động chính</div>
+        <nav class="nav" aria-label="main navigation">
+          <button class="active" data-view="schedule">
+            Lịch trình & công việc
+          </button>
+          <button data-view="guests">Danh sách khách</button>
+          <button data-view="log">Nhật ký tour</button>
+          <button data-view="attendance">Check-in & điểm danh</button>
+          <button data-view="requests">Yêu cầu đặc biệt</button>
+          <button data-view="feedback">Gửi phản hồi</button>
+        </nav>
+        <hr
+          style="
+            border: none;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            margin: 14px 0;
+          "
+        />
+        <div style="font-size: 13px; opacity: 0.9">
+          Mẫu demo: sửa / lưu cục bộ
+        </div>
+      </aside>
 
-      // if editing, ensure unique code (or allow same if unchanged)
-      const conflict = tours.find((t,i)=>t.code===tour.code && i!==editingIndex)
-      if(conflict){ if(!confirm('Mã tour đã tồn tại. Ghi đè?')) return }
+      <div>
+        <header>
+          <div style="display: flex; align-items: center; gap: 12px">
+            <h2 style="margin: 0">Trang Hướng dẫn viên</h2>
+            <div class="small">Quản lý tour & tương tác với đoàn</div>
+          </div>
+          <div>
+            <button class="btn ghost" id="exportBtn">Xuất PDF (demo)</button>
+            <button class="btn" id="saveBtn">Lưu cục bộ</button>
+          </div>
+        </header>
 
-      if(editingIndex>=0){ tours[editingIndex] = tour }
-      else tours.push(tour)
-      saveLS()
-      render(search.value)
-      resetForm()
-    })
+        <main class="container">
+          <!-- VIEWS -->
+          <section id="view-schedule" class="card view">
+            <h3>Lịch trình tour được phân công</h3>
+            <div id="schedules" class="grid" style="margin-top: 12px"></div>
+          </section>
 
-    // Expose functions to window for table buttons
-    window.edit = function(i){
-      const t = tours[i]
-      if(!t) return
-      editingIndex = i
-      $('code').value = t.code
-      $('name').value = t.name
-      $('startDate').value = t.startDate
-      $('capacity').value = t.capacity
-      $('price').value = t.price
-      $('status').value = t.status
-      $('desc').value = t.desc
-      window.scrollTo({top:0,behavior:'smooth'})
-    }
+          <section id="view-guests" class="card view" style="display: none">
+            <h3>Danh sách khách</h3>
+            <div class="search" style="margin: 10px 0">
+              <input
+                id="guestSearch"
+                placeholder="Tìm theo tên, nhóm, hoặc số điện thoại"
+              />
+              <button class="btn ghost" id="clearSearch">Xóa</button>
+            </div>
+            <div
+              class="card"
+              style="padding: 0; overflow: auto; max-height: 420px"
+            >
+              <table>
+                <thead>
+                  <tr>
+                    <th>Họ tên</th>
+                    <th>Liên hệ</th>
+                    <th>Nhóm</th>
+                    <th>Ghi chú</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="guestTable"></tbody>
+              </table>
+            </div>
+          </section>
 
-    window.remove = function(i){
-      if(!confirm('Xác nhận xóa tour này?')) return
-      tours.splice(i,1)
-      saveLS(); render(search.value)
-    }
+          <section id="view-log" class="card view" style="display: none">
+            <h3>Nhật ký tour</h3>
+            <div class="small">
+              Ghi chép hàng ngày: sự kiện, sự cố, phản hồi, ảnh
+            </div>
+            <div style="margin-top: 12px">
+              <textarea
+                id="logInput"
+                rows="6"
+                style="
+                  width: 100%;
+                  padding: 10px;
+                  border-radius: 8px;
+                  border: 1px solid #ddd;
+                "
+                placeholder="Viết nhật ký cho ngày..."
+              ></textarea>
+              <div
+                style="
+                  margin-top: 8px;
+                  display: flex;
+                  gap: 8px;
+                  align-items: center;
+                "
+              >
+                <input type="file" id="logImages" multiple accept="image/*" />
+                <button class="btn" id="addLogBtn">Thêm vào nhật ký</button>
+              </div>
+              <div id="logs" style="margin-top: 14px"></div>
+            </div>
+          </section>
 
-    search.addEventListener('input', ()=>render(search.value))
+          <section id="view-attendance" class="card view" style="display: none">
+            <h3>Check-in & điểm danh</h3>
+            <div
+              class="attendance"
+              id="attendanceList"
+              style="margin-top: 12px"
+            ></div>
+            <div style="margin-top: 8px">
+              <button class="btn" id="markAllBtn">
+                Đánh dấu tất cả có mặt
+              </button>
+            </div>
+          </section>
 
-    exportBtn.addEventListener('click', ()=>{
-      if(!tours.length){ alert('Không có dữ liệu để export'); return }
-      const header = ['code','name','startDate','capacity','price','status','desc']
-      const rows = [header.join(',')].concat(tours.map(t=>header.map(h=>`"${String(t[h]||'').replace(/"/g,'""')}"`).join(',')))
-      const blob = new Blob([rows.join('\n')], {type:'text/csv'})
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url; a.download = 'tours.csv'; a.click(); URL.revokeObjectURL(url)
-    })
+          <section id="view-requests" class="card view" style="display: none">
+            <h3>Yêu cầu đặc biệt</h3>
+            <div class="small">
+              Danh sách yêu cầu: ăn chay, dị ứng, bệnh lý...
+            </div>
+            <div id="requestsArea" style="margin-top: 12px"></div>
+          </section>
 
-    clearBtn.addEventListener('click', ()=>{
-      if(!confirm('Xóa toàn bộ dữ liệu tour trong trình duyệt?')) return
-      tours = []; saveLS(); render()
-    })
+          <section id="view-feedback" class="card view" style="display: none">
+            <h3>Gửi phản hồi về tour / nhà cung cấp</h3>
+            <div style="margin-top: 8px">
+              <input
+                id="fbProvider"
+                placeholder="Tên nhà cung cấp / dịch vụ"
+                style="
+                  width: 100%;
+                  padding: 8px;
+                  border-radius: 8px;
+                  border: 1px solid #ddd;
+                "
+              />
+              <textarea
+                id="fbText"
+                rows="4"
+                style="
+                  width: 100%;
+                  padding: 10px;
+                  border-radius: 8px;
+                  border: 1px solid #ddd;
+                  margin-top: 8px;
+                "
+                placeholder="Ý kiến, nhận xét..."
+              ></textarea>
+              <div
+                style="
+                  margin-top: 8px;
+                  display: flex;
+                  gap: 8px;
+                  align-items: center;
+                "
+              >
+                <label class="small">Đánh giá:</label>
+                <select id="fbRating">
+                  <option value="5">5 - Xuất sắc</option>
+                  <option value="4">4 - Tốt</option>
+                  <option value="3">3 - Trung bình</option>
+                  <option value="2">2 - Kém</option>
+                  <option value="1">1 - Rất kém</option>
+                </select>
+                <button class="btn" id="sendFb">Gửi</button>
+              </div>
+              <div id="fbList" style="margin-top: 12px"></div>
+            </div>
+          </section>
 
-    resetBtn.addEventListener('click', resetForm)
+          <footer>
+            Phiên bản demo • Dữ liệu lưu trong localStorage trình duyệt
+          </footer>
+        </main>
+      </div>
+    </div>
 
-    // initial render
-    render()
-  </script>
-</body>
+    <script>
+      // --- Sample data ---
+      const sampleTours = [
+        {
+          id: "T1",
+          title: "Hà Nội - Hạ Long 3N2Đ",
+          dates: "15-17 Nov 2025",
+          tasks: ["Chuẩn bị danh sách khách", "Liên hệ KS", "Kiểm tra xe"],
+          days: [
+            {
+              day: 1,
+              time: "08:00",
+              activity: "Tập trung, khởi hành",
+              note: "Điểm đón: Cổng B, KS A",
+            },
+            {
+              day: 2,
+              time: "09:00",
+              activity: "Tham quan Vịnh Hạ Long",
+              note: "Chuyến tàu 9h",
+            },
+            {
+              day: 3,
+              time: "12:00",
+              activity: "Về Hà Nội, kết thúc",
+              note: "",
+            },
+          ],
+        },
+        {
+          id: "T2",
+          title: "Đà Nẵng - Hội An 2N1Đ",
+          dates: "22-23 Nov 2025",
+          tasks: ["Chuẩn bị micro", "Kiểm tra HDV thay ca"],
+          days: [
+            {
+              day: 1,
+              time: "07:30",
+              activity: "Khởi hành đến Hội An",
+              note: "",
+            },
+            {
+              day: 2,
+              time: "10:00",
+              activity: "Tham quan phố cổ",
+              note: "Hẹn gặp hướng dẫn địa phương",
+            },
+          ],
+        },
+      ];
+
+      const sampleGuests = [
+        {
+          id: 1,
+          name: "Nguyễn Văn A",
+          phone: "0912345678",
+          group: "G1",
+          note: "Ăn chay",
+        },
+        {
+          id: 2,
+          name: "Trần Thị B",
+          phone: "0987654321",
+          group: "G1",
+          note: "Dị ứng hải sản",
+        },
+        { id: 3, name: "Lê Văn C", phone: "0900111222", group: "G2", note: "" },
+      ];
+
+      // load/save helpers
+      function loadState() {
+        const state = JSON.parse(localStorage.getItem("hdv_state") || "{}");
+        return {
+          tours: state.tours || sampleTours,
+          guests: state.guests || sampleGuests,
+          logs: state.logs || [],
+          feedbacks: state.feedbacks || [],
+        };
+      }
+      function saveState(state) {
+        localStorage.setItem("hdv_state", JSON.stringify(state));
+        alert("Đã lưu cục bộ");
+      }
+
+      let state = loadState();
+
+      // NAV
+      document.querySelectorAll(".nav button").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          document
+            .querySelectorAll(".nav button")
+            .forEach((b) => b.classList.remove("active"));
+          btn.classList.add("active");
+          const view = btn.dataset.view;
+          document
+            .querySelectorAll(".view")
+            .forEach((v) => (v.style.display = "none"));
+          document.getElementById("view-" + view).style.display = "block";
+        });
+      });
+
+      // Render schedules
+      function renderSchedules() {
+        const el = document.getElementById("schedules");
+        el.innerHTML = "";
+        state.tours.forEach((t) => {
+          const card = document.createElement("div");
+          card.className = "card";
+          card.innerHTML = `<h3>${t.title}</h3><div class="small">${
+            t.dates
+          }</div><div style="margin-top:8px">${t.tasks
+            .map((x) => '<span class="tag">' + x + "</span>")
+            .join(
+              " "
+            )}</div><div style="margin-top:8px"><strong>Lịch trình:</strong><ul>${t.days
+            .map(
+              (d) =>
+                `<li>${d.time} — ${d.activity} ${
+                  d.note ? "- " + d.note : ""
+                }</li>`
+            )
+            .join(
+              ""
+            )}</ul></div><div style="margin-top:8px"><button class="btn ghost" onclick="editTour('${
+            t.id
+          }')">Sửa</button></div>`;
+          el.appendChild(card);
+        });
+      }
+
+      window.editTour = function (id) {
+        const t = state.tours.find((x) => x.id === id);
+        const newTitle = prompt("Tiêu đề tour", t.title);
+        if (newTitle !== null) {
+          t.title = newTitle;
+          saveState(state);
+          renderSchedules();
+        }
+      };
+
+      // Guests
+      function renderGuests(filter = "") {
+        const tbody = document.getElementById("guestTable");
+        tbody.innerHTML = "";
+        const q = filter.trim().toLowerCase();
+        state.guests
+          .filter(
+            (g) =>
+              !q ||
+              (g.name + g.phone + g.group + g.note).toLowerCase().includes(q)
+          )
+          .forEach((g) => {
+            const tr = document.createElement("tr");
+            tr.innerHTML = `<td>${g.name}</td><td>${g.phone}</td><td>${
+              g.group
+            }</td><td>${
+              g.note || ""
+            }</td><td><button class="btn ghost" onclick="editGuest(${
+              g.id
+            })">Sửa</button></td>`;
+            tbody.appendChild(tr);
+          });
+      }
+
+      window.editGuest = function (id) {
+        const g = state.guests.find((x) => x.id === id);
+        const newNote = prompt("Ghi chú / yêu cầu của khách", g.note || "");
+        if (newNote !== null) {
+          g.note = newNote;
+          saveState(state);
+          renderGuests(document.getElementById("guestSearch").value);
+          renderRequests();
+        }
+      };
+
+      document
+        .getElementById("guestSearch")
+        .addEventListener("input", (e) => renderGuests(e.target.value));
+      document.getElementById("clearSearch").addEventListener("click", () => {
+        document.getElementById("guestSearch").value = "";
+        renderGuests();
+      });
+
+      // Logs
+      function renderLogs() {
+        const el = document.getElementById("logs");
+        el.innerHTML = "";
+        state.logs
+          .slice()
+          .reverse()
+          .forEach((l, i) => {
+            const d = document.createElement("div");
+            d.className = "card";
+            d.style.marginBottom = "8px";
+            d.innerHTML = `<div style="display:flex;justify-content:space-between"><div><strong>${
+              l.date
+            }</strong><div class="small">${
+              l.author || "HDV"
+            }</div></div><div><button class='btn ghost' onclick='deleteLog(${i})'>Xóa</button></div></div><div class="note" style="margin-top:8px">${escapeHtml(
+              l.text
+            )}</div>${
+              l.images && l.images.length
+                ? '<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">' +
+                  l.images
+                    .map(
+                      (src) =>
+                        `<img src="${src}" style="width:120px;border-radius:6px;border:1px solid #eee">`
+                    )
+                    .join("") +
+                  "</div>"
+                : ""
+            }`;
+            el.appendChild(d);
+          });
+      }
+      function escapeHtml(s) {
+        return s
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;");
+      }
+
+      document
+        .getElementById("addLogBtn")
+        .addEventListener("click", async () => {
+          const txt = document.getElementById("logInput").value.trim();
+          if (!txt) return alert("Nhập nội dung nhật ký");
+          const files = [...document.getElementById("logImages").files];
+          const images = await Promise.all(files.map((f) => fileToDataURL(f)));
+          state.logs.push({
+            date: new Date().toLocaleString(),
+            text: txt,
+            images,
+          });
+          document.getElementById("logInput").value = "";
+          document.getElementById("logImages").value = "";
+          saveState(state);
+          renderLogs();
+        });
+      function fileToDataURL(file) {
+        return new Promise((res) => {
+          const r = new FileReader();
+          r.onload = (e) => res(e.target.result);
+          r.readAsDataURL(file);
+        });
+      }
+      function deleteLog(idx) {
+        if (confirm("Xóa nhật ký này?")) {
+          state.logs.splice(state.logs.length - 1 - idx, 1);
+          saveState(state);
+          renderLogs();
+        }
+      }
+
+      // Attendance
+      function renderAttendance() {
+        const el = document.getElementById("attendanceList");
+        el.innerHTML = "";
+        state.guests.forEach((g) => {
+          const div = document.createElement("div");
+          div.className = "guest";
+          const present = g.present || false;
+          div.innerHTML = `<div><strong>${g.name}</strong><div class="small">${
+            g.group
+          } • ${
+            g.phone
+          }</div></div><div style="display:flex;gap:8px;align-items:center"><div class="small tag">${
+            present ? "Có mặt" : "Vắng"
+          }</div><button class='btn ghost' onclick='togglePresent(${
+            g.id
+          })'>Toggle</button></div>`;
+          el.appendChild(div);
+        });
+      }
+      window.togglePresent = function (id) {
+        const g = state.guests.find((x) => x.id === id);
+        g.present = !g.present;
+        saveState(state);
+        renderAttendance();
+      };
+      document.getElementById("markAllBtn").addEventListener("click", () => {
+        state.guests.forEach((g) => (g.present = true));
+        saveState(state);
+        renderAttendance();
+      });
+
+      // Requests
+      function renderRequests() {
+        const el = document.getElementById("requestsArea");
+        el.innerHTML = "";
+        state.guests
+          .filter((g) => g.note)
+          .forEach((g) => {
+            const d = document.createElement("div");
+            d.className = "card";
+            d.style.marginBottom = "8px";
+            d.innerHTML = `<div style="display:flex;justify-content:space-between"><div><strong>${
+              g.name
+            }</strong><div class="small">${g.group} • ${
+              g.phone
+            }</div></div><div><button class='btn' onclick='remind(${
+              g.id
+            })'>Gửi nhắc</button></div></div><div style="margin-top:8px">${escapeHtml(
+              g.note
+            )}</div>`;
+            el.appendChild(d);
+          });
+        if (!el.innerHTML)
+          el.innerHTML = '<div class="small">Không có yêu cầu đặc biệt</div>';
+      }
+      window.remind = function (id) {
+        alert("Đã gửi nhắc (demo) tới khách ID " + id);
+      };
+
+      // Feedback
+      function renderFeedbacks() {
+        const el = document.getElementById("fbList");
+        el.innerHTML = "";
+        state.feedbacks
+          .slice()
+          .reverse()
+          .forEach((f) => {
+            const d = document.createElement("div");
+            d.className = "card";
+            d.style.marginBottom = "8px";
+            d.innerHTML = `<strong>${f.provider}</strong><div class="small">${
+              f.rating
+            } • ${f.date}</div><div style="margin-top:8px">${escapeHtml(
+              f.text
+            )}</div>`;
+            el.appendChild(d);
+          });
+      }
+      document.getElementById("sendFb").addEventListener("click", () => {
+        const p = document.getElementById("fbProvider").value.trim();
+        const t = document.getElementById("fbText").value.trim();
+        const r = document.getElementById("fbRating").value;
+        if (!p || !t) return alert("Nhập tên nhà cung cấp và nội dung");
+        state.feedbacks.push({
+          provider: p,
+          text: t,
+          rating: r,
+          date: new Date().toLocaleString(),
+        });
+        saveState(state);
+        renderFeedbacks();
+        document.getElementById("fbProvider").value = "";
+        document.getElementById("fbText").value = "";
+      });
+
+      // Save / Export
+      document
+        .getElementById("saveBtn")
+        .addEventListener("click", () => saveState(state));
+      document
+        .getElementById("exportBtn")
+        .addEventListener("click", () =>
+          alert(
+            "Tính năng xuất PDF demo — có thể tích hợp thư viện jsPDF sau này"
+          )
+        );
+
+      // initial render
+      renderSchedules();
+      renderGuests();
+      renderLogs();
+      renderAttendance();
+      renderRequests();
+      renderFeedbacks();
+
+      // small helper to persist when leaving
+      window.addEventListener("beforeunload", () => saveState(state));
+    </script>
+  </body>
 </html>

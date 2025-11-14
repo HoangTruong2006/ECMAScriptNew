@@ -5,5 +5,9 @@
     "eslint-plugin-react": "^7.37.5",
     "globals": "^16.5.0",
     "typescript-eslint": "^8.46.4"
+  },
+  "dependencies": {
+    "@tailwindcss/vite": "^4.1.17",
+    "tailwindcss": "^4.1.17"
   }
 }
