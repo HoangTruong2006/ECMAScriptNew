@@ -1,7 +1,9 @@
-import Footer from './components/Footer'
-import Header from './components/Header'
+import Footer from '../components/Footer'
+import Header from '../components/Header'
+import Heading from '../components/Heading'
+import TourCard from '../components/TourCard'
 
-function App() {
+function Home() {
   // mock data
   const tours = [
     {
@@ -18,13 +20,7 @@ function App() {
     },
     {
       id: 3,
-      title: 'Tour Du Lịch Nhat Ban Update',
-      image:
-        'https://vtourist.com.vn/wp-content/uploads/2024/05/kinh-nghiem-du-lich-sydney-1200x800.jpg',
-    },
-    {
-      id: 4,
-      title: 'Tour Du Lịch Nhat Ban Update',
+      title: 'Tour Du Lịch Nhat Ban',
       image:
         'https://vtourist.com.vn/wp-content/uploads/2024/05/kinh-nghiem-du-lich-sydney-1200x800.jpg',
     },
@@ -33,9 +29,10 @@ function App() {
     <div className="min-h-screen flex flex-col justify-between">
       <Header />
       <main>
-        <h1 className="text-3xl text-blue-600 text-center font-bold border-b-2 border-b-orange-400 uppercase">
+        {/* <h1 className="text-3xl text-blue-600 text-center font-bold border-b-2 border-b-orange-400 uppercase">
           Tour Nội Địa
-        </h1>
+        </h1> */}
+        <Heading title="Tour Nội Địa" />
         <p className="text-xl font-medium my-2 px-2">
           Các chuyến đi đồng hành cùng chúng tôi là khoảnh khắc đặc biêt, luôn
           sẵn sàng tạo ra những trải nghiệm độc đáo và không quên cho du khách,
@@ -43,14 +40,10 @@ function App() {
         </p>
         <div className="flex gap-2">
           {tours.map(tour => (
-            <div key={tour.id}>
-              <img src={tour.image} width={500} alt="" height={300} />
-              <h2 className="text-3xl font-bold text-orange-300">
-                {tour.title}
-              </h2>
-            </div>
+            <TourCard key={tour.id} title={tour.title} image={tour.image} />
           ))}
         </div>
+        <Heading title="Tour Quoc Te" />
       </main>
 
       <Footer />
@@ -58,4 +51,4 @@ function App() {
   )
 }
 
-export default App
+export default Home
