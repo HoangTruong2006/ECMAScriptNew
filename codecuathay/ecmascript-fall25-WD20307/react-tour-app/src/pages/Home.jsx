@@ -33,16 +33,12 @@ function Home() {
           Tour Nội Địa
         </h1> */}
         <Heading title="Tour Nội Địa" />
-        <p className="text-xl font-medium my-2 px-2">
-          Các chuyến đi đồng hành cùng chúng tôi là khoảnh khắc đặc biêt, luôn
-          sẵn sàng tạo ra những trải nghiệm độc đáo và không quên cho du khách,
-          giúp mang đến những chuyến hành trình tuyệt vời.
-        </p>
-        <div className="flex gap-2">
-          {tours.map(tour => (
-            <TourCard key={tour.id} title={tour.title} image={tour.image} />
-          ))}
-        </div>
+       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 p-4">
+  {tours.map(tour => (
+    <TourCard key={tour.id} title={tour.title} image={tour.image} />
+  ))}
+</div>
+
         <Heading title="Tour Quoc Te" />
       </main>
 
