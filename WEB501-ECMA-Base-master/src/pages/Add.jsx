@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import toast from "react-hot-toast";
 
 function Add() {
   const navigate = useNavigate();
@@ -13,7 +14,6 @@ function Add() {
   });
 
   const [error, setError] = useState("");
-
   const validate = () => {
     if (!form.name || !form.age || !form.subject || !form.major) {
       return "Vui lòng nhập đầy đủ thông tin";
@@ -27,9 +27,8 @@ function Add() {
 
     const err = validate();
     if (err) return setError(err);
-
     await axios.post("http://localhost:3000/students", form);
-
+    toast.success("Thêm sinh viên thành công!");
     navigate("/");
   };
 
