@@ -1,0 +1,11 @@
+{
+  "students": [
+    {
+      "id": 1,
+      "name": "Nguyễn Văn A",
+      "age": 20,
+      "subject": "React",
+      "major": "FE"
+    }
+  ]
+}

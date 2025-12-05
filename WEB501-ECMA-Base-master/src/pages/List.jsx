@@ -1,16 +1,23 @@
 import { Link } from "react-router-dom";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import axios from "axios";
 
 function List() {
-  const [students, setStudents] = useState(
-    JSON.parse(localStorage.getItem("students") || "[]")
-  );
+  const [students, setStudents] = useState([]);
 
-  const handleDelete = (id) => {
+  const loadData = async () => {
+    const res = await axios.get("http://localhost:3000/students");
+    setStudents(res.data);
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const handleDelete = async (id) => {
     if (confirm("Xóa sinh viên này?")) {
-      const newList = students.filter((s) => s.id !== id);
-      setStudents(newList);
-      localStorage.setItem("students", JSON.stringify(newList));
+      await axios.delete(`http://localhost:3000/students/${id}`);
+      loadData();
     }
   };
 
@@ -25,47 +32,43 @@ function List() {
         + Thêm mới
       </Link>
 
-      {students.length === 0 ? (
-        <p>Chưa có sinh viên nào.</p>
-      ) : (
-        <table className="w-full border">
-          <thead>
-            <tr className="bg-gray-200">
-              <th className="border p-2">Tên</th>
-              <th className="border p-2">Tuổi</th>
-              <th className="border p-2">Môn học</th>
-              <th className="border p-2">Ngành</th>
-              <th className="border p-2">Hành động</th>
+      <table className="w-full border">
+        <thead>
+          <tr className="bg-gray-200">
+            <th className="border p-2">Tên</th>
+            <th className="border p-2">Tuổi</th>
+            <th className="border p-2">Môn</th>
+            <th className="border p-2">Ngành</th>
+            <th className="border p-2">Hành động</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {students.map((s) => (
+            <tr key={s.id}>
+              <td className="border p-2">{s.name}</td>
+              <td className="border p-2">{s.age}</td>
+              <td className="border p-2">{s.subject}</td>
+              <td className="border p-2">{s.major}</td>
+              <td className="border p-2">
+                <Link
+                  to={`/edit/${s.id}`}
+                  className="px-3 py-1 bg-yellow-400 mr-2 rounded"
+                >
+                  Sửa
+                </Link>
+
+                <button
+                  onClick={() => handleDelete(s.id)}
+                  className="px-3 py-1 bg-red-500 text-white rounded"
+                >
+                  Xóa
+                </button>
+              </td>
             </tr>
-          </thead>
-
-          <tbody>
-            {students.map((s) => (
-              <tr key={s.id}>
-                <td className="border p-2">{s.name}</td>
-                <td className="border p-2">{s.age}</td>
-                <td className="border p-2">{s.subject}</td>
-                <td className="border p-2">{s.major}</td>
-                <td className="border p-2">
-                  <Link
-                    to={`/edit/${s.id}`}
-                    className="px-3 py-1 bg-yellow-400 mr-2 rounded"
-                  >
-                    Sửa
-                  </Link>
-
-                  <button
-                    onClick={() => handleDelete(s.id)}
-                    className="px-3 py-1 bg-red-500 text-white rounded"
-                  >
-                    Xóa
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

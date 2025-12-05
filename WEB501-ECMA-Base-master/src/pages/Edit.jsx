@@ -1,84 +1,62 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import axios from "axios";
 
 function Edit() {
   const { id } = useParams();
   const navigate = useNavigate();
-
-  const [form, setForm] = useState({
-    name: "",
-    age: "",
-    subject: "",
-    major: "",
-  });
-
+  const [form, setForm] = useState({});
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const list = JSON.parse(localStorage.getItem("students") || "[]");
-    const found = list.find((s) => s.id == id);
-    if (found) setForm(found);
+    axios.get(`http://localhost:3000/students/${id}`).then((res) => {
+      setForm(res.data);
+    });
   }, [id]);
 
-  const validate = () => {
-    if (!form.name || !form.age || !form.subject || !form.major) {
-      return "Vui lòng nhập đầy đủ thông tin";
-    }
-    if (isNaN(form.age) || Number(form.age) <= 0) {
-      return "Tuổi phải lớn hơn 0";
-    }
-    return "";
-  };
-
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const err = validate();
-    if (err) return setError(err);
+    if (!form.name || !form.age || !form.subject || !form.major)
+      return setError("Vui lòng nhập đầy đủ thông tin");
 
-    const list = JSON.parse(localStorage.getItem("students") || "[]");
-    const idx = list.findIndex((s) => s.id == id);
+    if (Number(form.age) <= 0) return setError("Tuổi phải lớn hơn 0");
 
-    list[idx] = form;
+    await axios.put(`http://localhost:3000/students/${id}`, form);
 
-    localStorage.setItem("students", JSON.stringify(list));
     navigate("/");
   };
 
   return (
     <div>
-      <h2 className="text-2xl font-bold mb-4">Sửa sinh viên</h2>
-
-      {error && <p className="text-red-600 mb-3">{error}</p>}
+      <h2 className="text-2xl mb-4 font-bold">Sửa sinh viên</h2>
+      {error && <p className="text-red-600">{error}</p>}
 
       <form className="space-y-4" onSubmit={handleSubmit}>
         <input
-          type="text"
-          value={form.name}
-          className="w-full border p-2"
+          className="border w-full p-2"
+          value={form.name || ""}
           onChange={(e) => setForm({ ...form, name: e.target.value })}
         />
 
         <input
           type="number"
-          value={form.age}
-          className="w-full border p-2"
+          className="border w-full p-2"
+          value={form.age || ""}
           onChange={(e) => setForm({ ...form, age: e.target.value })}
         />
 
         <input
-          type="text"
-          value={form.subject}
-          className="w-full border p-2"
+          className="border w-full p-2"
+          value={form.subject || ""}
           onChange={(e) => setForm({ ...form, subject: e.target.value })}
         />
 
         <select
-          value={form.major}
-          className="w-full border p-2"
+          className="border p-2 w-full"
+          value={form.major || ""}
           onChange={(e) => setForm({ ...form, major: e.target.value })}
         >
-          <option value="">-- Chọn ngành --</option>
           <option value="FE">FE</option>
           <option value="BE">BE</option>
           <option value="MOBILE">Mobile</option>

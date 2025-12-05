@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
 function Add() {
   const navigate = useNavigate();
@@ -17,29 +18,18 @@ function Add() {
     if (!form.name || !form.age || !form.subject || !form.major) {
       return "Vui lòng nhập đầy đủ thông tin";
     }
-    if (isNaN(form.age) || Number(form.age) <= 0) {
-      return "Tuổi phải lớn hơn 0";
-    }
-    if (!["FE", "BE", "MOBILE"].includes(form.major)) {
-      return "Ngành học không hợp lệ";
-    }
+    if (Number(form.age) <= 0) return "Tuổi phải lớn hơn 0";
     return "";
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     const err = validate();
     if (err) return setError(err);
 
-    const list = JSON.parse(localStorage.getItem("students") || "[]");
+    await axios.post("http://localhost:3000/students", form);
 
-    list.push({
-      id: Date.now(),
-      ...form,
-    });
-
-    localStorage.setItem("students", JSON.stringify(list));
     navigate("/");
   };
 
@@ -47,32 +37,30 @@ function Add() {
     <div>
       <h2 className="text-2xl font-bold mb-4">Thêm sinh viên</h2>
 
-      {error && <p className="text-red-600 mb-3">{error}</p>}
+      {error && <p className="text-red-600">{error}</p>}
 
       <form className="space-y-4" onSubmit={handleSubmit}>
         <input
-          type="text"
-          placeholder="Tên sinh viên"
-          className="w-full border p-2"
+          className="border w-full p-2"
+          placeholder="Tên"
           onChange={(e) => setForm({ ...form, name: e.target.value })}
         />
 
         <input
           type="number"
+          className="border w-full p-2"
           placeholder="Tuổi"
-          className="w-full border p-2"
           onChange={(e) => setForm({ ...form, age: e.target.value })}
         />
 
         <input
-          type="text"
+          className="border w-full p-2"
           placeholder="Môn học"
-          className="w-full border p-2"
           onChange={(e) => setForm({ ...form, subject: e.target.value })}
         />
 
         <select
-          className="w-full border p-2"
+          className="border p-2 w-full"
           onChange={(e) => setForm({ ...form, major: e.target.value })}
         >
           <option value="">-- Chọn ngành --</option>
