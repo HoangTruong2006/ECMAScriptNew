@@ -6,6 +6,13 @@
       "age": 20,
       "subject": "React",
       "major": "FE"
+    },
+    {
+      "name": "Mai Thị Hoa",
+      "age": "19",
+      "subject": "Lập trình mobile ",
+      "major": "MOBILE",
+      "id": 2
     }
   ]
 }
